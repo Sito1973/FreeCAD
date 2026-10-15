@@ -34,14 +34,14 @@ def caja(nombre, x, y, lx, ly, h=ALTO, z=0):
 caja("Piso", -MURO, -MURO, ANCHO + 2*MURO, FONDO + 2*MURO, h=50, z=-50)
 
 # Muros
-caja("Muro_superior", -MURO, FONDO, 5380 + MURO, MURO)
+caja("Muro_superior", -MURO, FONDO, ANCHO - 870 + MURO, MURO)  # hasta el pilar
 caja("Pilar_sup_der", ANCHO - 870, FONDO - 450, 870 + MURO, 450 + MURO)
 Y_PILAR_IZQ = FONDO - 2850 - 440
 caja("Muro_izquierdo", -MURO, Y_PILAR_IZQ, MURO, FONDO - Y_PILAR_IZQ)  # abierto bajo el pilar
 caja("Pilar_izquierdo", 0, Y_PILAR_IZQ, 540, 440)
 caja("Muro_inferior", 940, -MURO, 2570, MURO)
 caja("Machon_inferior", 940 + 2570, -300, 130, 300)
-caja("Muro_derecho", ANCHO, MURO_DER_DESDE, MURO, FONDO - MURO_DER_DESDE)
+caja("Muro_derecho", ANCHO, MURO_DER_DESDE, MURO, FONDO - 450 - MURO_DER_DESDE)  # hasta el pilar
 caja("Pilar_der", ANCHO - 400, MURO_DER_DESDE - 400, 400 + MURO, 400)
 
 # Barra curva (cuarto de anillo entre -90 y 0 grados)
@@ -53,6 +53,21 @@ barra = doc.addObject("Part::Feature", "Barra_curva"); barra.Shape = anillo
 
 doc.recompute()
 objs = [o for o in doc.Objects if hasattr(o, "Shape")]
+
+# ---- Colores y vista 3D (solo si FreeCAD corre con interfaz grafica) ----
+if App.GuiUp:
+    import FreeCADGui as Gui
+    for o in objs:
+        if o.Name == "Piso":                         c = (0.78, 0.80, 0.82)
+        elif o.Name == "Barra_curva":                c = (0.72, 0.45, 0.25)
+        elif o.Name.startswith(("Pilar", "Machon")): c = (0.62, 0.62, 0.66)
+        else:                                        c = (0.90, 0.89, 0.85)
+        o.ViewObject.Visibility = True
+        o.ViewObject.ShapeColor = c
+    vista = Gui.activeDocument().activeView()
+    vista.viewIsometric(); vista.fitAll(); Gui.updateGui()
+    vista.saveImage(os.path.join(OUT, "cocina_3d.png"), 1600, 1000, "Current")
+
 doc.saveAs(os.path.join(OUT, "cocina.FCStd"))
 Part.export(objs, os.path.join(OUT, "cocina.step"))
 Mesh.export(objs, os.path.join(OUT, "cocina.stl"))
@@ -88,3 +103,7 @@ svg.append(f'<text x="{x:.0f}" y="{y:.0f}" font-family="sans-serif" font-size="1
 svg.append("</svg>")
 open(os.path.join(OUT, "cocina_planta.svg"), "w").write("\n".join(svg))
 print("OK", len(objs), "objetos")
+
+# Al generar en lote (xvfb-run) cerrar FreeCAD; como macro normal no se cierra
+if App.GuiUp and os.environ.get("COCINA_LOTE") == "1":
+    os._exit(0)
